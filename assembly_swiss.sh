@@ -181,7 +181,7 @@ r2=$indir/${name}_2.fastq.gz
 #megahit_assembly $name megahit_swiss #need to make sure the output directory is created freshly each time, otherwise, error
 #-----------------------------------------------------------
 #assembly assessment
-assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=
+assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=1437
 #assembly_evaluation careful_assembly_Swiss contigs.fasta Swiss_assembly_quast #N50=1058
 #assembly_evaluation megahit_swiss final.contigs.fa megahit_swiss_quast #N50=1058
 
