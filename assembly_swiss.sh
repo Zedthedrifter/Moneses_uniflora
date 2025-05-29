@@ -59,6 +59,9 @@ samtools view -b -F 4 -o mapping/${name}_mapped.reads.bam reads.bam #plasmid rea
 samtools fastq -1 ${r1/trimmed.fastq/trimmed.nc.fastq} -2 ${r2/trimmed.fastq/trimmed.nc.fastq} -0 /dev/null -s /dev/null -n mapping/${name}_unmapped.reads.bam
 samtools fastq -1 ${r1/trimmed.fastq/trimmed.pl.fastq} -2 ${r2/trimmed.fastq/trimmed.pl.fastq} -0 /dev/null -s /dev/null -n mapping/${name}_mapped.reads.bam
 #can do assembly for chloroplast and nuclear genome separately
+#before: 11558738 pairs
+#after:  11497885 pairs
+#not reducing too much apparently
 }
 
 #===================================================================
@@ -79,13 +82,25 @@ echo 'done'
 #Use if coverage >5X. --only-assembler Mode 
 function spades {
 
-r1=$1
-r2=$2
+name=$1
+r1=$indir/${name}_1.trimmed.nc.fastq.gz 
+r2=$indir/${name}_2.trimmed.nc.fastq.gz
 
 #spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 55,63 --careful -t 32 #no enough RAM
 #spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 55,63 --meta -t 32 -m 64 #give a memory limit of 64 GB. still too big
-spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 23,31 --meta -t 16 -m 32 #try smaller kmers, also requested 32GB memory when submitting queue, less thread
-#spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 55 --meta -t 16 -m 16 #try larger kmer, quest 16 GB memory
+#spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 23,31 --meta -t 16 -m 32 #try smaller kmers, also requested 32GB memory when submitting queue, less thread
+#spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 31,55 --meta -t 16 -m 32 #try larger kmer, quest 32 GB memory. k31 finished. 
+spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 31,55 --careful -t 16 -m 32 #try larger kmer, quest 32 GB memory with --careful
+}
+
+#===========================================================================
+
+#de novo assembly evaluation
+function assembly_evaluation {
+
+contigs=$1
+
+quast.py Swiss_assembly/contigs.fasta -o Swiss_quast  
 }
 
 #===========================================================================
@@ -106,8 +121,9 @@ r2=$indir/${name}_2.fastq.gz
 #remove_chlor $indir/Thale_cress_chloroplast_ref.fasta ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} swiss
 
 #de novo assembly 
+#use nc reads only
 #abyss_assembly $name
-spades ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq}
+spades $name 
 
 
 
