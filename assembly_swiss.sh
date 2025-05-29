@@ -45,13 +45,14 @@ fastqc ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} -o QC
 #remove the plastmid reads
 function remove_chlor {
 #reference genome: NC_000932.1 Thale cress chloroplast reference genome
+#update: use Vaccinium macrocarpon reference genome. a common reference for Ericaceae
 ref=$1
 r1=$2
 r2=$3
 strain=$4
 #alignment with bowtie2
-#bowtie2-build -f $ref chlo_ref
-#bowtie2-align-s --wrapper basic-0 -x chlo_ref -p 20 --threads 16 --phred33 --very-sensitive --quiet --time --rg-id ${strain} --rg SM:${strain} --rg PL:'ILLUMINA' -S reads.bam -1 ${r1} -2 ${r2}
+bowtie2-build -f $ref chlo_ref
+bowtie2-align-s --wrapper basic-0 -x chlo_ref -p 20 --threads 16 --phred33 --very-sensitive --quiet --time --rg-id ${strain} --rg SM:${strain} --rg PL:'ILLUMINA' -S reads.bam -1 ${r1} -2 ${r2}
 #split mapped vs unmapped reads; output the bam files into directory 'mapping'
 samtools view -b -f 4 -o mapping/${name}_unmapped.reads.bam reads.bam #non plasmid reads
 samtools view -b -F 4 -o mapping/${name}_mapped.reads.bam reads.bam #plasmid reads
@@ -59,9 +60,11 @@ samtools view -b -F 4 -o mapping/${name}_mapped.reads.bam reads.bam #plasmid rea
 samtools fastq -1 ${r1/trimmed.fastq/trimmed.nc.fastq} -2 ${r2/trimmed.fastq/trimmed.nc.fastq} -0 /dev/null -s /dev/null -n mapping/${name}_unmapped.reads.bam
 samtools fastq -1 ${r1/trimmed.fastq/trimmed.pl.fastq} -2 ${r2/trimmed.fastq/trimmed.pl.fastq} -0 /dev/null -s /dev/null -n mapping/${name}_mapped.reads.bam
 #can do assembly for chloroplast and nuclear genome separately
+#when using Thale cress chloroplast reference genome
 #before: 11558738 pairs
 #after:  11497885 pairs
 #not reducing too much apparently
+#when using cranberry reference genome: 
 }
 
 #===================================================================
@@ -119,11 +122,11 @@ r2=$indir/${name}_2.fastq.gz
 
 #remove/seperate plasmid reads
 #remove_chlor $indir/Thale_cress_chloroplast_ref.fasta ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} swiss
-
+remove_chlor $indir/Vaccinium_macrocarpon_chloroplast_ref.fasta ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} swiss
 #de novo assembly 
 #use nc reads only
 #abyss_assembly $name
-spades $name 
+#spades $name 
 
 
 
