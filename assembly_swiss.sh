@@ -5,9 +5,10 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G #ask for 32G memory
 
-#run as interactive job on slurm
+#also run as interactive job on slurm
 #a piloting project. later if I have other jobs that can run in parallel I'll put them to queue
 
+#===================================================================
 function download_data {
 accession=$1
 indir=$2
@@ -21,6 +22,7 @@ wget -P $indir $r1 #could probably use -o to rename the files and reduce the num
 wget -P $indir $r2
 }
 
+#===================================================================
 function quality_control {
 r1=$1
 r2=$2
@@ -42,6 +44,7 @@ trim #run once is enough
 fastqc ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} -o QC
 }
 
+#===================================================================
 #remove the plastmid reads
 function remove_chlor {
 #reference genome: NC_000932.1 Thale cress chloroplast reference genome
@@ -65,6 +68,7 @@ samtools fastq -1 ${r1/trimmed.fastq/trimmed.pl.fastq} -2 ${r2/trimmed.fastq/tri
 #after:  11497885 pairs
 #not reducing too much apparently
 #when using cranberry reference genome: 
+#after:  11464275 pairs, not reduced too much...
 }
 
 #===================================================================
@@ -92,8 +96,39 @@ r2=$indir/${name}_2.trimmed.nc.fastq.gz
 #spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 55,63 --careful -t 32 #no enough RAM
 #spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 55,63 --meta -t 32 -m 64 #give a memory limit of 64 GB. still too big
 #spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 23,31 --meta -t 16 -m 32 #try smaller kmers, also requested 32GB memory when submitting queue, less thread
-#spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 31,55 --meta -t 16 -m 32 #try larger kmer, quest 32 GB memory. k31 finished. 
-spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 31,55 --careful -t 16 -m 32 #try larger kmer, quest 32 GB memory with --careful
+spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly_4k -k 23,31,55,65 --meta -t 16 -m 32 #try larger kmer, quest 32 GB memory. k31 finished. 
+#spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 31,55 --careful -t 16 -m 32 #try larger kmer, quest 32 GB memory with --careful this is actually worse than without --careful
+}
+
+#try assembly with megahit
+function megahit_assembly {
+
+name=$1
+outdir=$2
+r1=$indir/${name}_1.trimmed.nc.fastq.gz 
+r2=$indir/${name}_2.trimmed.nc.fastq.gz
+
+megahit \
+  -1 $r1 \
+  -2 $r2 \
+  -o $outdir \
+  --k-list 21,41,61,81 \  
+  --min-count 2 \          
+  --prune-level 1 \        
+  --prune-depth 1 \
+  --no-mercy \             
+  --memory 0.5 \           
+  --low-local-ratio	0.1 \  
+  -t 16       
+/
+
+# Reduced k-mer range for low coverage
+# Lower threshold for rare k-mers
+# Moderate pruning to retain fragmented contigs
+# Disable "mercy" k-mers (improves sensitivity)
+# Use 50% of available RAM (adjust if needed)
+#Retains contigs with local low-coverage regions
+echo 'done'
 }
 
 #===========================================================================
@@ -101,11 +136,26 @@ spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 31,55 --ca
 #de novo assembly evaluation
 function assembly_evaluation {
 
-contigs=$1
+indir=$1
+contigs=$2
+outdir=$3
 
-quast.py Swiss_assembly/contigs.fasta -o Swiss_quast  
+quast.py $indir/$contigs -o $outdir  
 }
 
+
+#===========================================================================
+
+#SSR detection
+function SSR_detection {
+
+indir=$1
+contigs=$2
+#remove reads <500 bp
+seqtk seq -L 500 $indir/$contigs > $indir/filtered.fasta
+#misa cannot be installed but thankfully can be run on web
+#try other detector?
+}
 #===========================================================================
 function main {
 accession="ERX7324453"
@@ -122,13 +172,21 @@ r2=$indir/${name}_2.fastq.gz
 
 #remove/seperate plasmid reads
 #remove_chlor $indir/Thale_cress_chloroplast_ref.fasta ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} swiss
-remove_chlor $indir/Vaccinium_macrocarpon_chloroplast_ref.fasta ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} swiss
+#remove_chlor $indir/Vaccinium_macrocarpon_chloroplast_ref.fasta ${r1/fastq/trimmed.fastq} ${r2/fastq/trimmed.fastq} swiss
+#-----------------------------------------------------------
 #de novo assembly 
-#use nc reads only
-#abyss_assembly $name
+#use nc reads only: spades, megahit --> compare N50 L50
+#abyss_assembly $name #pass
 #spades $name 
+#megahit_assembly $name megahit_swiss #need to make sure the output directory is created freshly each time, otherwise, error
+#-----------------------------------------------------------
+#assembly assessment
+assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=
+#assembly_evaluation careful_assembly_Swiss contigs.fasta Swiss_assembly_quast #N50=1058
+#assembly_evaluation megahit_swiss final.contigs.fa megahit_swiss_quast #N50=1058
 
-
+#SSR detection
+#SSR_detection Swiss_assembly contigs.fasta
 
 
 }
