@@ -92,12 +92,16 @@ function spades {
 name=$1
 r1=$indir/${name}_1.trimmed.nc.fastq.gz 
 r2=$indir/${name}_2.trimmed.nc.fastq.gz
+contig_dir=Swiss_assembly_contigs
 
-#spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 55,63 --careful -t 32 #no enough RAM
-#spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 55,63 --meta -t 32 -m 64 #give a memory limit of 64 GB. still too big
 #spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly -k 23,31 --meta -t 16 -m 32 #try smaller kmers, also requested 32GB memory when submitting queue, less thread
-spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly_4k -k 23,31,55,65 --meta -t 16 -m 32 #try larger kmer, quest 32 GB memory. k31 finished. 
+#spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly_4k -k 31,55,65,75 --meta -t 16 -m 32 #try larger kmer, quest 32 GB memory. k31 finished. 
 #spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 31,55 --careful -t 16 -m 32 #try larger kmer, quest 32 GB memory with --careful this is actually worse than without --careful
+#try interative method: 
+#filter out long contigs from previous assembly to facilitate downstream assembly
+seqtk seq -L 1000 $contig_dir/contigs.3.fasta > $contig_dir/contigs.3.filtered.fasta
+spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 23,65 --trusted-contigs $contig_dir/contigs.3.filtered.fasta --careful -t 16 -m 32 #continue from contig.3
+
 }
 
 #try assembly with megahit
@@ -177,13 +181,14 @@ r2=$indir/${name}_2.fastq.gz
 #de novo assembly 
 #use nc reads only: spades, megahit --> compare N50 L50
 #abyss_assembly $name #pass
-#spades $name 
+spades $name 
 #megahit_assembly $name megahit_swiss #need to make sure the output directory is created freshly each time, otherwise, error
 #-----------------------------------------------------------
 #assembly assessment
-assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=1437
+#assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=1437
 #assembly_evaluation careful_assembly_Swiss contigs.fasta Swiss_assembly_quast #N50=1058
 #assembly_evaluation megahit_swiss final.contigs.fa megahit_swiss_quast #N50=1058
+#assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=760, total length 3970014, largest: 84731
 
 #SSR detection
 #SSR_detection Swiss_assembly contigs.fasta
