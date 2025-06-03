@@ -3,7 +3,7 @@
 #SBATCH --export=ALL
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G #ask for 32G memory
+#SBATCH --mem=128G #ask for 128G memory
 
 #also run as interactive job on slurm
 #a piloting project. later if I have other jobs that can run in parallel I'll put them to queue
@@ -98,10 +98,19 @@ contig_dir=Swiss_assembly_contigs
 #spades.py --only-assembler -1 $r1 -2 $r2 -o Swiss_assembly_4k -k 31,55,65,75 --meta -t 16 -m 32 #try larger kmer, quest 32 GB memory. k31 finished. 
 #spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 31,55 --careful -t 16 -m 32 #try larger kmer, quest 32 GB memory with --careful this is actually worse than without --careful
 #try interative method: 
+#at least the assembly improves each time and builds upon previous assembly
 #filter out long contigs from previous assembly to facilitate downstream assembly
-seqtk seq -L 1000 $contig_dir/contigs.3.fasta > $contig_dir/contigs.3.filtered.fasta
-spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 23,65 --trusted-contigs $contig_dir/contigs.3.filtered.fasta --careful -t 16 -m 32 #continue from contig.3
-
+#seqtk seq -L 1000 $contig_dir/contigs.3.fasta > $contig_dir/contigs.3.filtered.fasta
+#spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 23,65 --trusted-contigs $contig_dir/contigs.3.filtered.fasta --careful -t 16 -m 32 #continue from contig.3 --> contigs.4.fasta
+#continue from contigs.4.fasta
+#seqtk seq -L 1000 $contig_dir/contigs.4.fasta > $contig_dir/contigs.4.filtered.fasta
+#spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 69,75 --trusted-contigs $contig_dir/contigs.4.filtered.fasta --careful -t 32 -m 128
+#continue from contigs.6.fasta
+#seqtk seq -L 1000 $contig_dir/contigs.6.fasta > $contig_dir/contigs.6.filtered.fasta
+#spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 45,61 --trusted-contigs $contig_dir/contigs.6.filtered.fasta --careful -t 32 -m 128
+#continue from contigs.7.fasta
+seqtk seq -L 1000 $contig_dir/contigs.7.fasta > $contig_dir/contigs.7.filtered.fasta
+spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Swiss -k 25,35 --trusted-contigs $contig_dir/contigs.7.filtered.fasta --careful -t 32 -m 128
 }
 
 #try assembly with megahit
@@ -134,6 +143,27 @@ megahit \
 #Retains contigs with local low-coverage regions
 echo 'done'
 }
+#===================================================================
+#a de novo assembler specialized in plant genome assembly
+function assembly_platanus {
+
+name=$1
+indir=$2
+r1=$indir/${name}_1.trimmed.fastq.gz 
+r2=$indir/${name}_2.trimmed.fastq.gz
+prefix=$3
+
+#god it's great now I've configured everything
+platanus_allee assemble -f $r1 $r2 -o $prefix -t 24 -m 128 2>assemble.log
+mv ${prefix}_contig.fa Swiss_assembly_contigs
+
+##phasing -- this module won't work on the currently available platanus version if your genome is longer than ~600Mbp. Email me for the bug-free version (lcampos@rbge.org.uk)
+#platanus_allee phase -o ${prefix}-phased -c ${prefix}_contig.fa -IP1 $r1 $r2 -mapper minimap2 -t 32  2>phase.log
+
+#platanus consensus
+#platanus_allee consensus -o ${prefix}-consensus -c ${prefix}-phased_allPhaseBlock.fa -IP1 $r1 $r2 -t 72 2>consensus.log
+
+}
 
 #===========================================================================
 
@@ -151,14 +181,14 @@ quast.py $indir/$contigs -o $outdir
 #===========================================================================
 
 #SSR detection
-function SSR_detection {
+function MISA_SSR {
 
 indir=$1
 contigs=$2
 #remove reads <500 bp
-seqtk seq -L 500 $indir/$contigs > $indir/filtered.fasta
-#misa cannot be installed but thankfully can be run on web
-#try other detector?
+seqtk seq -L 500 $indir/$contigs > $indir/${contigs/fasta/filtered.fasta}
+#MISA is installed by source code directly
+misa.pl $indir/${contigs/fasta/filtered.fasta} 
 }
 #===========================================================================
 function main {
@@ -181,17 +211,18 @@ r2=$indir/${name}_2.fastq.gz
 #de novo assembly 
 #use nc reads only: spades, megahit --> compare N50 L50
 #abyss_assembly $name #pass
-spades $name 
+#spades $name 
 #megahit_assembly $name megahit_swiss #need to make sure the output directory is created freshly each time, otherwise, error
+#assembly_platanus $name $indir mu1
 #-----------------------------------------------------------
 #assembly assessment
 #assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=1437
-#assembly_evaluation careful_assembly_Swiss contigs.fasta Swiss_assembly_quast #N50=1058
+#assembly_evaluation Swiss_assembly_contigs mu1_contig.fa Swiss_assembly_quast 
 #assembly_evaluation megahit_swiss final.contigs.fa megahit_swiss_quast #N50=1058
 #assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=760, total length 3970014, largest: 84731
 
 #SSR detection
-#SSR_detection Swiss_assembly contigs.fasta
+MISA_SSR /home/zchen/maternity_cover/moneses_uniflora_202505/Swiss_assembly_contigs contigs.8.fasta #files will be saved to the same directory as the input file
 
 
 }

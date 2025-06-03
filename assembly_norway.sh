@@ -3,7 +3,7 @@
 #SBATCH --export=ALL
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=32G #ask for 32G memory
+#SBATCH --mem=128G #ask for 32G memory
 
 #also run as interactive job on slurm
 #a piloting project. later if I have other jobs that can run in parallel I'll put them to queue
@@ -89,12 +89,32 @@ function spades {
 name=$1
 r1=$indir/${name}_1.trimmed.nc.fastq.gz 
 r2=$indir/${name}_2.trimmed.nc.fastq.gz
+outdir=/home/zchen/maternity_cover/moneses_uniflora_202505/careful_assembly_Norway
+contigdir=/home/zchen/maternity_cover/moneses_uniflora_202505/Norway_assembly_contigs
 
-#spades.py --only-assembler -1 $r1 -2 $r2 -o Norway_assembly -k 55,63 --careful -t 32 #no enough RAM
-#spades.py --only-assembler -1 $r1 -2 $r2 -o Norway_assembly -k 55,63 --meta -t 32 -m 64 #give a memory limit of 64 GB. still too big
-#spades.py --only-assembler -1 $r1 -2 $r2 -o Norway_assembly -k 23,31 --meta -t 16 -m 32 #try smaller kmers, also requested 32GB memory when submitting queue, less thread
-spades.py --only-assembler -1 $r1 -2 $r2 -o Norway_assembly -k 23,31,55 --meta -t 16 -m 32 #try larger kmer, quest 32 GB memory. k31 finished. newly added kmer=23, see if this improves the result
-#spades.py --only-assembler -1 $r1 -2 $r2 -o careful_assembly_Norway -k 31,55 --careful -t 16 -m 32 #try larger kmer, quest 32 GB memory with --careful
+#spades.py --only-assembler -1 $r1 -2 $r2 -o $outdir -k 31,55 --careful -t 32 -m 128 #try larger kmer, quest 32 GB memory with --careful
+#mv $outdir/contigs.fasta $contigdir/contigs.1.fasta
+#
+
+functoin contig_iter {
+
+trust_ctg=$1
+k1=$2
+k2=$3
+nb=$4
+
+seqtk seq -L 1000 $contigdir/$trust_ctg > $contigdir/${trust_ctg/fasta/filtered.fasta}
+spades.py --only-assembler -1 $r1 -2 $r2 -o $outdir -k $k1,$k2 --trusted-contigs $contigdir/${trust_ctg/fasta/filtered.fasta} --careful -t 32 -m 128
+assembly_evaluation $outdir contigs.fasta Norway_assembly_quast
+mv Norway_assembly_quast/report.html Norway_assembly_quast/report.${nb}.html 
+mv $outdir/contigs.fasta $contigdir/contigs.${nb}.fasta
+}
+
+#contig_iter contigs.1.fasta 23 65 2
+contig_iter contigs.2.fasta 69 75 3
+#contig_iter contigs.2.fasta 45 61 4
+#contig_iter contigs.2.fasta 25 35 5
+
 }
 
 #===========================================================================
@@ -119,8 +139,7 @@ indir=$1
 contigs=$2
 #remove reads <500 bp
 seqtk seq -L 500 $indir/$contigs > $indir/filtered.fasta
-#misa cannot be installed but thankfully can be run on web
-#try other detector?
+
 }
 #===========================================================================
 
@@ -143,12 +162,12 @@ r2=inputs/${name}_2.fastq.gz
 
 #de novo assembly 
 #use nc reads only
-#spades $name 
+spades $name 
 
 #assembly assessment
 #assembly_evaluation careful_assembly_Norway contigs.fasta careful_assembly_Norway_quast
 #very poor...
-assembly_evaluation Norway_assembly contigs.fasta Norway_assembly_quast
+#assembly_evaluation careful_assembly_Norway contigs.fasta Norway_assembly_quast
 
 #SSR detection
 #SSR_detection careful_assembly_Norway contigs.fasta
