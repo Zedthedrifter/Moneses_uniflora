@@ -95,26 +95,26 @@ contigdir=/home/zchen/maternity_cover/moneses_uniflora_202505/Norway_assembly_co
 #spades.py --only-assembler -1 $r1 -2 $r2 -o $outdir -k 31,55 --careful -t 32 -m 128 #try larger kmer, quest 32 GB memory with --careful
 #mv $outdir/contigs.fasta $contigdir/contigs.1.fasta
 #
+function contig_iter {
 
-functoin contig_iter {
-
-trust_ctg=$1
-k1=$2
-k2=$3
-nb=$4
-
-seqtk seq -L 1000 $contigdir/$trust_ctg > $contigdir/${trust_ctg/fasta/filtered.fasta}
-spades.py --only-assembler -1 $r1 -2 $r2 -o $outdir -k $k1,$k2 --trusted-contigs $contigdir/${trust_ctg/fasta/filtered.fasta} --careful -t 32 -m 128
-assembly_evaluation $outdir contigs.fasta Norway_assembly_quast
-mv Norway_assembly_quast/report.html Norway_assembly_quast/report.${nb}.html 
-mv $outdir/contigs.fasta $contigdir/contigs.${nb}.fasta
-}
+  trust_ctg=$1
+  k1=$2
+  k2=$3
+  nb=$4
+  
+  seqtk seq -L 1000 $contigdir/$trust_ctg > $contigdir/${trust_ctg/fasta/filtered.fasta}
+  spades.py --only-assembler -1 $r1 -2 $r2 -o $outdir -k $k1,$k2 --trusted-contigs $contigdir/${trust_ctg/fasta/filtered.fasta} --careful -t 32 -m 128
+  assembly_evaluation $outdir contigs.fasta Norway_assembly_quast
+  mv Norway_assembly_quast/report.html Norway_assembly_quast/report.${nb}.html 
+  mv $outdir/contigs.fasta $contigdir/contigs.${nb}.fasta
+  }  
 
 #contig_iter contigs.1.fasta 23 65 2
-contig_iter contigs.2.fasta 69 75 3
-#contig_iter contigs.2.fasta 45 61 4
-#contig_iter contigs.2.fasta 25 35 5
-
+#contig_iter contigs.2.fasta 69 75 3
+contig_iter contigs.3.fasta 45 61 4
+contig_iter contigs.4.fasta 25 35 5
+contig_iter contigs.5.fasta 39 49 6
+contig_iter contigs.6.fasta 29 59 7
 }
 
 #===========================================================================
@@ -133,13 +133,14 @@ quast.py $indir/$contigs -o $outdir
 #===========================================================================
 
 #SSR detection
-function SSR_detection {
+function MISA_SSR {
 
 indir=$1
 contigs=$2
 #remove reads <500 bp
-seqtk seq -L 500 $indir/$contigs > $indir/filtered.fasta
-
+seqtk seq -L 500 $indir/$contigs > $indir/${contigs/fasta/filtered.fasta}
+#MISA is installed by source code directly
+misa.pl $indir/${contigs/fasta/filtered.fasta} 
 }
 #===========================================================================
 
@@ -162,15 +163,13 @@ r2=inputs/${name}_2.fastq.gz
 
 #de novo assembly 
 #use nc reads only
-spades $name 
+#spades $name #include assessment into the assembly steps
 
 #assembly assessment
-#assembly_evaluation careful_assembly_Norway contigs.fasta careful_assembly_Norway_quast
-#very poor...
-#assembly_evaluation careful_assembly_Norway contigs.fasta Norway_assembly_quast
+#assembly_evaluation Norway_assembly_contigs contigs.2.fasta Norway_assembly_quast
 
 #SSR detection
-#SSR_detection careful_assembly_Norway contigs.fasta
+MISA_SSR /home/zchen/maternity_cover/moneses_uniflora_202505/Norway_assembly_contigs/ contigs.7.fasta 
 
 }
 

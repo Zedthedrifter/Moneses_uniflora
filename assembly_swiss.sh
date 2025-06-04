@@ -3,7 +3,7 @@
 #SBATCH --export=ALL
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=128G #ask for 128G memory
+#SBATCH --mem=58G #ask for 128G memory
 
 #also run as interactive job on slurm
 #a piloting project. later if I have other jobs that can run in parallel I'll put them to queue
@@ -191,16 +191,28 @@ seqtk seq -L 500 $indir/$contigs > $indir/${contigs/fasta/filtered.fasta}
 misa.pl $indir/${contigs/fasta/filtered.fasta} 
 }
 #===========================================================================
+function init {
+
+mkdir BUSCO_results Swiss_assembly_contigs inputs
+}
+#===========================================================================
+
 function main {
 accession="ERX7324453"
 name="ERR7756292"
 indir='/home/zchen/maternity_cover/moneses_uniflora_202505/inputs'
+
+#init
 #download data (run once)
 #download_data $accession $indir #comment out after downloading once, if other analysis needs to be run again
 
 #quality control
 r1=$indir/${name}_1.fastq.gz
 r2=$indir/${name}_2.fastq.gz
+#final outputs
+contigdir=/home/zchen/maternity_cover/moneses_uniflora_202505/Swiss_assembly_contigs
+finalctg=contigs.8.fasta
+buscodir=BUSCO_results
 #quality_control $r1 $r2
 #quality looks good
 
@@ -221,8 +233,11 @@ r2=$indir/${name}_2.fastq.gz
 #assembly_evaluation megahit_swiss final.contigs.fa megahit_swiss_quast #N50=1058
 #assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=760, total length 3970014, largest: 84731
 
+#completeness assessment using BUSCO
+busco -i $contigdir/$finalctg -o $buscodir -m genome -c 32 -l eudicotyledons_odb12 -f
+
 #SSR detection
-MISA_SSR /home/zchen/maternity_cover/moneses_uniflora_202505/Swiss_assembly_contigs contigs.8.fasta #files will be saved to the same directory as the input file
+#MISA_SSR $contigdir $finalctg #files will be saved to the same directory as the input file
 
 
 }
