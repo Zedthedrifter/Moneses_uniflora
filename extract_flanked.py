@@ -7,6 +7,10 @@ from Bio import SeqIO
 from Bio import Align
 from Bio.SeqRecord import SeqRecord
 
+###############################################
+#standard input: ./extract_flanked.py xx.filtered.fasta xx.filtered.fasta.misa prefix desired_flank_size
+###############################################
+
 def read_SSR_to_dict(misa):
   with open(misa) as handle:
     keys=[x for x in next(handle).strip('\n').split('\t') if x !='']
