@@ -148,6 +148,9 @@ function main {
 accession="ERX5335444" #the Norway sample
 name="ERR5555402"
 indir='/home/zchen/maternity_cover/moneses_uniflora_202505/inputs'
+contigdir=/home/zchen/maternity_cover/moneses_uniflora_202505/Norway_assembly_contigs
+finalctg=contigs.7.fasta
+buscodir=/home/zchen/maternity_cover/moneses_uniflora_202505/Norway_BUSCO
 #download data (run once)
 #download_data $accession $indir #comment out after downloading once, if other analysis needs to be run again
 
@@ -169,8 +172,8 @@ r2=inputs/${name}_2.fastq.gz
 #assembly_evaluation Norway_assembly_contigs contigs.2.fasta Norway_assembly_quast
 
 #SSR detection
-MISA_SSR /home/zchen/maternity_cover/moneses_uniflora_202505/Norway_assembly_contigs/ contigs.7.fasta 
-
+#MISA_SSR /home/zchen/maternity_cover/moneses_uniflora_202505/Norway_assembly_contigs/ contigs.7.fasta 
+busco -i $contigdir/$finalctg -o $buscodir -m genome -c 32 -l eudicotyledons_odb12 -r
 }
 
 main

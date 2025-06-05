@@ -3,7 +3,7 @@
 #SBATCH --export=ALL
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=58G #ask for 128G memory
+#SBATCH --mem=128G #ask for 128G memory
 
 #also run as interactive job on slurm
 #a piloting project. later if I have other jobs that can run in parallel I'll put them to queue
@@ -234,7 +234,7 @@ buscodir=BUSCO_results
 #assembly_evaluation Swiss_assembly contigs.fasta Swiss_assembly_quast #N50=760, total length 3970014, largest: 84731
 
 #completeness assessment using BUSCO
-busco -i $contigdir/$finalctg -o $buscodir -m genome -c 32 -l eudicotyledons_odb12 -f
+busco -i $contigdir/$finalctg -o $buscodir -m genome -c 32 -l eudicotyledons_odb12 -r
 
 #SSR detection
 #MISA_SSR $contigdir $finalctg #files will be saved to the same directory as the input file
